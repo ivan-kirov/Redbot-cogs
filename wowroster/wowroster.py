@@ -71,13 +71,13 @@ class ClassSelect(discord.ui.Select):
     def __init__(self, parent: "SetupView"):
         options = [discord.SelectOption(label=c) for c in WOW_DATA]
         super().__init__(placeholder="Choose a class...", options=options, custom_id="wowroster_class_select")
-        self.parent = parent
+        self.setup_view = parent
 
     async def callback(self, interaction: discord.Interaction):
-        self.parent.chosen_class = self.values[0]
-        self.parent.chosen_role = None
-        self.parent.chosen_spec = None
-        await self.parent.show_role_step(interaction)
+        self.setup_view.chosen_class = self.values[0]
+        self.setup_view.chosen_role = None
+        self.setup_view.chosen_spec = None
+        await self.setup_view.show_role_step(interaction)
 
 
 class RoleSelect(discord.ui.Select):
@@ -87,12 +87,12 @@ class RoleSelect(discord.ui.Select):
             for role in roles_for_class(parent.chosen_class)
         ]
         super().__init__(placeholder="Choose a role...", options=options, custom_id="wowroster_role_select")
-        self.parent = parent
+        self.setup_view = parent
 
     async def callback(self, interaction: discord.Interaction):
-        self.parent.chosen_role = self.values[0]
-        self.parent.chosen_spec = None
-        await self.parent.show_spec_step(interaction)
+        self.setup_view.chosen_role = self.values[0]
+        self.setup_view.chosen_spec = None
+        await self.setup_view.show_spec_step(interaction)
 
 
 class SpecSelect(discord.ui.Select):
@@ -100,11 +100,11 @@ class SpecSelect(discord.ui.Select):
         specs = specs_for_class_role(parent.chosen_class, parent.chosen_role)
         options = [discord.SelectOption(label=s) for s in specs]
         super().__init__(placeholder="Choose a spec...", options=options, custom_id="wowroster_spec_select")
-        self.parent = parent
+        self.setup_view = parent
 
     async def callback(self, interaction: discord.Interaction):
-        self.parent.chosen_spec = self.values[0]
-        await self.parent.show_confirm_step(interaction)
+        self.setup_view.chosen_spec = self.values[0]
+        await self.setup_view.show_confirm_step(interaction)
 
 
 class BackCancelRow(discord.ui.View):
