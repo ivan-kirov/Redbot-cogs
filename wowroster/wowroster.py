@@ -24,13 +24,29 @@ SHEET_HEADER = [
     "Main Class",
     "Main Role",
     "Main Spec",
+    "Main Professions",
     "Secondary Class",
     "Secondary Role",
     "Secondary Spec",
+    "Alt Characters",
     "Last Updated",
 ]
 
 ROLE_EMOJI = {"Tank": "🛡️", "Healer": "💚", "DPS": "⚔️"}
+PROFESSIONS = [
+    "Alchemy",
+    "Blacksmithing",
+    "Enchanting",
+    "Engineering",
+    "Herbalism",
+    "Leatherworking",
+    "Mining",
+    "Skinning",
+    "Tailoring",
+    "Fishing",
+    "Cooking",
+    "First Aid",
+]
 
 # class -> [(spec, role), ...]
 WOW_DATA = {
@@ -101,6 +117,26 @@ class SpecSelect(discord.ui.Select):
 
     async def callback(self, interaction: discord.Interaction):
         self.setup_view.chosen_spec = self.values[0]
+        if self.setup_view.slot in {"main", "alt"}:
+            await self.setup_view.show_profession_step(interaction)
+        else:
+            await self.setup_view.show_confirm_step(interaction)
+
+
+class ProfessionSelect(discord.ui.Select):
+    def __init__(self, parent: "SetupView"):
+        options = [discord.SelectOption(label=profession) for profession in PROFESSIONS]
+        super().__init__(
+            placeholder="Choose professions...",
+            options=options,
+            min_values=0,
+            max_values=len(options),
+            custom_id="wowroster_profession_select",
+        )
+        self.setup_view = parent
+
+    async def callback(self, interaction: discord.Interaction):
+        self.setup_view.chosen_professions = self.values
         await self.setup_view.show_confirm_step(interaction)
 
 
@@ -116,9 +152,11 @@ class SetupView(discord.ui.View):
         self.cog = cog
         self.slot = slot  # "main" or "secondary"
         self.member = member
+        self.alt_name: Optional[str] = None
         self.chosen_class: Optional[str] = None
         self.chosen_role: Optional[str] = None
         self.chosen_spec: Optional[str] = None
+        self.chosen_professions: list[str] = []
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if interaction.user.id != self.member.id:
@@ -169,16 +207,31 @@ class SetupView(discord.ui.View):
         )
         await interaction.response.edit_message(embed=embed, view=self)
 
+    async def show_profession_step(self, interaction: discord.Interaction):
+        self._reset_items()
+        self.add_item(ProfessionSelect(self))
+        self.add_item(self._cancel_button())
+        title = f"Set Alt: {self.alt_name}" if self.slot == "alt" else "Set Main Professions"
+        embed = discord.Embed(
+            title=title,
+            description=f"Choose the professions for **{self.chosen_class} / {self.chosen_spec}**.",
+            color=discord.Color.blurple(),
+        )
+        await interaction.response.edit_message(embed=embed, view=self)
+
     async def show_confirm_step(self, interaction: discord.Interaction):
         self._reset_items()
         self.add_item(self._save_button())
         self.add_item(self._cancel_button())
+        title = f"Confirm Alt: {self.alt_name}" if self.slot == "alt" else f"Confirm {self.slot.capitalize()} Spec"
+        profession_text = ", ".join(self.chosen_professions) or "None"
         embed = discord.Embed(
-            title=f"Confirm {self.slot.capitalize()} Spec",
+            title=title,
             description=(
                 f"**Class:** {self.chosen_class}\n"
                 f"**Role:** {ROLE_EMOJI.get(self.chosen_role, '')} {self.chosen_role}\n"
                 f"**Spec:** {self.chosen_spec}"
+                + (f"\n**Professions:** {profession_text}" if self.slot in {"main", "alt"} else "")
             ),
             color=discord.Color.green(),
         )
@@ -201,7 +254,14 @@ class SetupView(discord.ui.View):
 
         async def cb(interaction: discord.Interaction):
             await self.cog.save_spec(
-                interaction, self.member, self.slot, self.chosen_class, self.chosen_role, self.chosen_spec
+                interaction,
+                self.member,
+                self.slot,
+                self.chosen_class,
+                self.chosen_role,
+                self.chosen_spec,
+                self.alt_name,
+                self.chosen_professions,
             )
             for item in self.children:
                 item.disabled = True
@@ -232,6 +292,11 @@ class RosterPanelView(discord.ui.View):
     async def set_secondary(self, interaction: discord.Interaction, button: discord.ui.Button):
         view = SetupView(self.cog, "secondary", interaction.user)
         await view.show_class_step(interaction, first=True)
+
+    @discord.ui.button(label="Add Alt", emoji="🧙", style=discord.ButtonStyle.primary, custom_id="wowroster_add_alt")
+    async def add_alt(self, interaction: discord.Interaction, button: discord.ui.Button):
+        modal = AltNameModal(self.cog)
+        await interaction.response.send_modal(modal)
 
     @discord.ui.button(
         label="View Roster", emoji="📋", style=discord.ButtonStyle.secondary, custom_id="wowroster_view"
@@ -269,6 +334,19 @@ class ConfirmResetView(discord.ui.View):
         await interaction.response.edit_message(content="Cancelled.", view=None)
 
 
+class AltNameModal(discord.ui.Modal, title="Add WoW Alt"):
+    character_name = discord.ui.TextInput(label="Character name", max_length=32, required=True)
+
+    def __init__(self, cog: "WowRoster"):
+        super().__init__()
+        self.cog = cog
+
+    async def on_submit(self, interaction: discord.Interaction):
+        view = SetupView(self.cog, "alt", interaction.user)
+        view.alt_name = self.character_name.value.strip()
+        await view.show_class_step(interaction, first=True)
+
+
 # --------------------------------------------------------------------------- #
 # Cog
 # --------------------------------------------------------------------------- #
@@ -285,9 +363,11 @@ class WowRoster(commands.Cog):
             main_class=None,
             main_role=None,
             main_spec=None,
+            main_professions=[],
             secondary_class=None,
             secondary_role=None,
             secondary_spec=None,
+            alts=[],
             last_updated=None,
         )
         self._gspread_clients = {}  # guild_id -> gspread.Client (cached)
@@ -299,15 +379,34 @@ class WowRoster(commands.Cog):
     # Data helpers
     # ------------------------------------------------------------------ #
 
-    async def save_spec(self, interaction, member, slot, cls, role, spec):
+    async def save_spec(self, interaction, member, slot, cls, role, spec, alt_name=None, professions=None):
         async with self.config.member(member).all() as data:
-            data[f"{slot}_class"] = cls
-            data[f"{slot}_role"] = role
-            data[f"{slot}_spec"] = spec
+            if slot == "alt":
+                alts = data.setdefault("alts", [])
+                alt = {
+                    "name": alt_name,
+                    "class": cls,
+                    "role": role,
+                    "spec": spec,
+                    "professions": professions or [],
+                }
+                alts[:] = [existing for existing in alts if existing.get("name", "").lower() != alt_name.lower()]
+                alts.append(alt)
+            else:
+                data[f"{slot}_class"] = cls
+                data[f"{slot}_role"] = role
+                data[f"{slot}_spec"] = spec
+                if slot == "main":
+                    data["main_professions"] = professions or []
             data["last_updated"] = datetime.now(timezone.utc).isoformat()
 
         embed = discord.Embed(
-            description=f"✅ Saved **{slot}**: {cls} / {role} / {spec}", color=discord.Color.green()
+            description=(
+                f"✅ Saved **alt {alt_name}**: {cls} / {role} / {spec}"
+                if slot == "alt"
+                else f"✅ Saved **{slot}**: {cls} / {role} / {spec}"
+            ),
+            color=discord.Color.green(),
         )
         await interaction.response.edit_message(embed=embed, view=None)
         await self.sync_member_to_sheet(member)
@@ -327,7 +426,10 @@ class WowRoster(commands.Cog):
             name = member.display_name if member else f"Unknown ({member_id})"
             main = _format_slot(data, "main")
             sec = _format_slot(data, "secondary")
-            embed.add_field(name=name, value=f"**Main:** {main}\n**Secondary:** {sec}", inline=False)
+            alts = _format_alts(data.get("alts", []))
+            embed.add_field(
+                name=name, value=f"**Main:** {main}\n**Secondary:** {sec}\n**Alts:** {alts}", inline=False
+            )
         return embed
 
     # ------------------------------------------------------------------ #
@@ -386,9 +488,11 @@ class WowRoster(commands.Cog):
             data.get("main_class") or "",
             data.get("main_role") or "",
             data.get("main_spec") or "",
+            ", ".join(data.get("main_professions", [])),
             data.get("secondary_class") or "",
             data.get("secondary_role") or "",
             data.get("secondary_spec") or "",
+            _format_alts(data.get("alts", [])),
             data.get("last_updated") or "",
         ]
 
@@ -397,7 +501,7 @@ class WowRoster(commands.Cog):
             if cell is None:
                 ws.append_row(row)
             else:
-                ws.update(f"A{cell.row}:I{cell.row}", [row])
+                ws.update(f"A{cell.row}:K{cell.row}", [row])
 
         await asyncio.to_thread(_write)
 
@@ -417,9 +521,11 @@ class WowRoster(commands.Cog):
                     data.get("main_class") or "",
                     data.get("main_role") or "",
                     data.get("main_spec") or "",
+                    ", ".join(data.get("main_professions", [])),
                     data.get("secondary_class") or "",
                     data.get("secondary_role") or "",
                     data.get("secondary_spec") or "",
+                    _format_alts(data.get("alts", [])),
                     data.get("last_updated") or "",
                 ]
             )
@@ -446,7 +552,7 @@ class WowRoster(commands.Cog):
         """Post the roster control panel in this channel."""
         embed = discord.Embed(
             title="WoW Roster",
-            description="Use the buttons below to set your main/secondary spec or view the roster.",
+            description="Use the buttons below to set your main/secondary spec, add alts, or view the roster.",
             color=discord.Color.blurple(),
         )
         await ctx.send(embed=embed, view=RosterPanelView(self))
@@ -501,6 +607,7 @@ class WowRoster(commands.Cog):
         embed = discord.Embed(title=f"{member.display_name}'s Roster Entry", color=discord.Color.gold())
         embed.add_field(name="Main", value=_format_slot(data, "main"), inline=False)
         embed.add_field(name="Secondary", value=_format_slot(data, "secondary"), inline=False)
+        embed.add_field(name="Alts", value=_format_alts(data.get("alts", [])), inline=False)
         await ctx.send(embed=embed)
 
 
@@ -510,4 +617,17 @@ def _format_slot(data: dict, slot: str) -> str:
     spec = data.get(f"{slot}_spec")
     if not cls:
         return "*Not set*"
-    return f"{ROLE_EMOJI.get(role, '')} {cls} — {role} — {spec}"
+    professions = data.get(f"{slot}_professions", [])
+    profession_text = f" ({', '.join(professions) or 'No professions'})" if slot == "main" else ""
+    return f"{ROLE_EMOJI.get(role, '')} {cls} — {role} — {spec}{profession_text}"
+
+
+def _format_alts(alts: list[dict]) -> str:
+    if not alts:
+        return "*None*"
+    return "\n".join(
+        f"**{alt.get('name', 'Unnamed')}**: {ROLE_EMOJI.get(alt.get('role'), '')} "
+        f"{alt.get('class', '')} — {alt.get('role', '')} — {alt.get('spec', '')} "
+        f"({', '.join(alt.get('professions', [])) or 'No professions'})"
+        for alt in alts
+    )
