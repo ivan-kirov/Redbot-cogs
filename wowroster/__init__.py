@@ -1,5 +1,5 @@
-from .wowroster import WoWRoster
+from .wowroster import WowRoster
 
 
 async def setup(bot):
-    await bot.add_cog(WoWRoster(bot))
+    await bot.add_cog(WowRoster(bot))
