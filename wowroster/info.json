@@ -1,0 +1,11 @@
+{
+    "author": ["Ivan"],
+    "short": "WoW roster manager",
+    "description": "Manage class, role and spec preferences.",
+    "install_msg": "WoWRoster loaded.",
+    "requirements": [],
+    "tags": ["wow", "roster"],
+    "hidden": false,
+    "disabled": false,
+    "end_user_data_statement": "Stores Discord user IDs and WoW preferences."
+}

@@ -1,0 +1,8 @@
+{
+    "author": ["Ivan"],
+    "install_msg": "Thanks for installing WoWRoster.",
+    "short": "WoW roster management with Google Sheets support.",
+    "description": "Track WoW class, role and spec preferences.",
+    "tags": ["wow", "roster", "google", "sheets"],
+    "min_bot_version": "3.5.0"
+}
