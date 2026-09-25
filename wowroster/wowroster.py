@@ -34,10 +34,7 @@ ROLE_EMOJI = {"Tank": "🛡️", "Healer": "💚", "DPS": "⚔️"}
 
 # class -> [(spec, role), ...]
 WOW_DATA = {
-    "Death Knight": [("Blood", "Tank"), ("Frost", "DPS"), ("Unholy", "DPS")],
-    "Demon Hunter": [("Havoc", "DPS"), ("Vengeance", "Tank")],
     "Druid": [("Balance", "DPS"), ("Feral", "DPS"), ("Guardian", "Tank"), ("Restoration", "Healer")],
-    "Evoker": [("Devastation", "DPS"), ("Preservation", "Healer"), ("Augmentation", "DPS")],
     "Hunter": [("Beast Mastery", "DPS"), ("Marksmanship", "DPS"), ("Survival", "DPS")],
     "Mage": [("Arcane", "DPS"), ("Fire", "DPS"), ("Frost", "DPS")],
     "Monk": [("Brewmaster", "Tank"), ("Mistweaver", "Healer"), ("Windwalker", "DPS")],
