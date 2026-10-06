@@ -97,6 +97,8 @@ class ClassSelect(discord.ui.Select):
 
 class RoleSelect(discord.ui.Select):
     def __init__(self, parent: "SetupView"):
+    professions = PRIMARY_PROFESSIONS if self.setup_view.slot in {"main", "alt"} else SECONDARY_PROFESSIONS
+    options = [discord.SelectOption(label=profession) for profession in professions]
         options = [
             discord.SelectOption(label=role, emoji=ROLE_EMOJI.get(role))
             for role in roles_for_class(parent.chosen_class)
@@ -115,6 +117,10 @@ class SpecSelect(discord.ui.Select):
         specs = specs_for_class_role(parent.chosen_class, parent.chosen_role)
         options = [discord.SelectOption(label=s) for s in specs]
         super().__init__(placeholder="Choose a spec...", options=options, custom_id="wowroster_spec_select")
+        if self.setup_view.slot in {"main", "alt", "secondary"}:
+            await self.setup_view.show_profession_step(interaction)
+        else:
+            await self.setup_view.show_confirm_step(interaction)
         self.setup_view = parent
 
     async def callback(self, interaction: discord.Interaction):
