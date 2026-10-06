@@ -1,15 +1,11 @@
 {
-  "name": "wowroster",
-  "version": "1.0.0",
-  "author": ["Your Name"],
-  "description": "World of Warcraft Roster Management for Redbot",
-  "category": "fun",
-  "dependencies": [],
-  "hidden": false,
-  "red_version": "4.0.0",
-  "python_version": "3.8",
-  "short": "WoW roster manager",
-  "install_msg": "WoWRoster loaded.",
-  "tags": ["wow", "roster"],
-  "end_user_data_statement": "Stores Discord user IDs and WoW preferences."
+    "author": ["YOURNAME"],
+    "min_bot_version": "3.5.0",
+    "description": "Lets members pick their WoW main/secondary class, role, and spec via Discord dropdowns, kept in sync with a Google Sheet.",
+    "hidden": false,
+    "install_msg": "Thanks for installing WowRoster! Run `[p]wowroster panel` to post the control panel, and `[p]wowroster setsheet` / `[p]wowroster setcreds` if you want Google Sheets sync.",
+    "requirements": ["gspread", "google-auth"],
+    "short": "WoW roster manager with dropdown UI, synced to Google Sheets",
+    "tags": ["wow", "roster", "sheets", "ui"],
+    "end_user_data_statement": "This cog stores each user's Discord ID, Discord name, and their selected WoW class/role/spec (main and secondary) locally in the bot's data folder, and optionally in a Google Sheet configured by the server's admins."
 }
