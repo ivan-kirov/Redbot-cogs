@@ -1,11 +1,15 @@
 {
-    "author": ["Ivan"],
-    "short": "WoW roster manager",
-    "description": "Manage class, role and spec preferences.",
-    "install_msg": "WoWRoster loaded.",
-    "requirements": [],
-    "tags": ["wow", "roster"],
-    "hidden": false,
-    "disabled": false,
-    "end_user_data_statement": "Stores Discord user IDs and WoW preferences."
+  "name": "wowroster",
+  "version": "1.0.0",
+  "author": ["Your Name"],
+  "description": "World of Warcraft Roster Management for Redbot",
+  "category": "fun",
+  "dependencies": [],
+  "hidden": false,
+  "red_version": "4.0.0",
+  "python_version": "3.8",
+  "short": "WoW roster manager",
+  "install_msg": "WoWRoster loaded.",
+  "tags": ["wow", "roster"],
+  "end_user_data_statement": "Stores Discord user IDs and WoW preferences."
 }
