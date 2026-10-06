@@ -33,7 +33,7 @@ SHEET_HEADER = [
 ]
 
 ROLE_EMOJI = {"Tank": "🛡️", "Healer": "💚", "DPS": "⚔️"}
-PROFESSIONS = [
+PRIMARY_PROFESSIONS = [
     "Alchemy",
     "Blacksmithing",
     "Enchanting",
@@ -43,6 +43,8 @@ PROFESSIONS = [
     "Mining",
     "Skinning",
     "Tailoring",
+]
+SECONDARY_PROFESSIONS = [
     "Fishing",
     "Cooking",
     "First Aid",
